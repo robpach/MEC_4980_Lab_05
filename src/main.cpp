@@ -1,18 +1,210 @@
 #include <Arduino.h>
+#include <P1AM.h>
 
-// put function declarations here:
-int myFunction(int, int);
+enum MachineStates
+{
+  Waiting,
+  ColorSensing,
+  CountedMove,
+  ejectState
+};
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+MachineStates curState = Waiting;
+
+// Modules
+int modInput = 1;
+int modOutput = 2;
+int modAnalog = 3;
+int detectW = 4;
+int detectR = 5;
+int detectB = 6;
+
+// Inputs
+int pulse = 1;
+int lbIn = 2;
+int lbOut = 3;
+
+// Outputs
+int conv = 1;
+int compressor = 2;
+int ejectW = 3;
+int ejectR = 4;
+int ejectB = 5;
+int whiteAvailable = 6;
+int redAvailable = 7;
+int blueAvailable = 8;
+
+// Analog Inputs
+int color = 1;
+
+// Vars
+int colorValue = 10000;
+int distToEject = 0;
+bool prevKeyState = false;
+int distMoved = 0;
+bool curKey = false;
+char targetColor = 'b';
+
+void setup()
+{
+
+  delay(1000);
+  Serial.begin(9600);
+  delay(1000);
+
+  // Start up P1AM modules!
+  while (!P1.init())
+  {
+    delay(1);
+  }
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+bool InputTriggered()
+{
+  return !P1.readDiscrete(modInput, lbIn);
 }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+bool OuputTriggered()
+{
+  return !P1.readDiscrete(modInput, lbOut);
+}
+
+void ToggleConveyor(bool s)
+{
+  P1.writeDiscrete(s, modOutput, conv);
+}
+
+int GetColor()
+{
+  return P1.readAnalog(modAnalog, color);
+}
+
+bool GetPulseKey()
+{
+  return P1.readDiscrete(modInput, pulse);
+}
+
+void ToggleCompressor(bool s)
+{
+  P1.writeDiscrete(s, modOutput, compressor);
+}
+
+void UseEjector(char c)
+{
+  int tempPin;
+  if (c == 'w')
+  {
+    tempPin = ejectW;
+  }
+  else if (c == 'r')
+  {
+    tempPin = ejectR;
+  }
+  else
+  {
+    tempPin = ejectB;
+  }
+  P1.writeDiscrete(true, modOutput, tempPin);
+  delay(1500);
+  P1.writeDiscrete(false, modOutput, tempPin);
+}
+
+void loop()
+{
+  switch (curState)
+  {
+  case Waiting:
+    // wait for light barrier to be tripped
+    // After tripped, switch state and turn on conveyor
+    if (InputTriggered())
+    {
+      curState = ColorSensing;
+      ToggleConveyor(true);
+      colorValue = 10000;
+    }
+
+    break;
+  case ColorSensing:
+    // get color and find min
+    colorValue = min(GetColor(), colorValue);
+    // keep on going until second light barrier
+    // Then switch states
+    if (OuputTriggered())
+    {
+      distMoved = 0;
+      curState = CountedMove;
+      // Decide how far to move
+      if (colorValue < 2500)
+      {
+        distToEject = 3;
+        targetColor = 'w';
+      }
+      else if (colorValue < 4600)
+      {
+        distToEject = 9;
+        targetColor = 'r';
+      }
+      else
+      {
+        distToEject = 14;
+        targetColor = 'b';
+      }
+      ToggleCompressor(true);
+    }
+    break;
+  case CountedMove:
+    // Watch pulse key
+    // Switch States
+    curKey = GetPulseKey();
+    if (curKey && !prevKeyState)
+    {
+      distMoved++;
+    }
+    prevKeyState = curKey;
+    // switch states and turn of conveyor
+    if (distMoved >= distToEject)
+    {
+      curState = ejectState;
+      ToggleConveyor(false);
+    }
+    break;
+  case ejectState:
+    UseEjector(targetColor);
+    curState = Waiting;
+    break;
+  default:
+    break;
+  }
+
+  if (P1.readDiscrete(modInput, detectW) == true)
+  {
+    P1.writeDiscrete(true, modOutput, whiteAvailable);
+    Serial.println("white available");
+  }
+  else
+  {
+    P1.writeDiscrete(false, modOutput, whiteAvailable);
+  }
+
+
+  if (P1.readDiscrete(modInput, detectR) == true)
+  {
+    P1.writeDiscrete(true, modOutput, redAvailable);
+    Serial.println("red available");
+  }
+  else
+  {
+    P1.writeDiscrete(false, modOutput, redAvailable);
+  }
+
+
+  if (P1.readDiscrete(modInput, detectB) == true)
+  {
+    P1.writeDiscrete(true, modOutput, blueAvailable);
+    Serial.println("blue available");
+  }
+  else
+  {
+    P1.writeDiscrete(false, modOutput, whiteAvailable);
+  }
 }
