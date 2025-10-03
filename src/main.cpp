@@ -44,6 +44,9 @@ bool prevKeyState = false;
 int distMoved = 0;
 bool curKey = false;
 char targetColor = 'b';
+char w = 'f';
+char r = 'f';
+char b = 'f';
 
 void setup()
 {
@@ -175,36 +178,43 @@ void loop()
   default:
     break;
   }
-
-  if (P1.readDiscrete(modInput, detectW) == true)
+  if (P1.readDiscrete(modInput, detectW) == false)
   {
     P1.writeDiscrete(true, modOutput, whiteAvailable);
-    Serial.println("white available");
+    w = 't';
   }
   else
   {
     P1.writeDiscrete(false, modOutput, whiteAvailable);
+    w = 'f';
   }
 
-
-  if (P1.readDiscrete(modInput, detectR) == true)
+  if (P1.readDiscrete(modInput, detectR) == false)
   {
     P1.writeDiscrete(true, modOutput, redAvailable);
-    Serial.println("red available");
+    r = 't';
   }
   else
   {
     P1.writeDiscrete(false, modOutput, redAvailable);
+    r = 'f';
   }
 
-
-  if (P1.readDiscrete(modInput, detectB) == true)
+  if (P1.readDiscrete(modInput, detectB) == false)
   {
     P1.writeDiscrete(true, modOutput, blueAvailable);
-    Serial.println("blue available");
+    b = 't';
   }
   else
   {
-    P1.writeDiscrete(false, modOutput, whiteAvailable);
+    P1.writeDiscrete(false, modOutput, blueAvailable);
+    b = 'f';
   }
+
+  Serial.print("White: ");
+  Serial.print(w);
+  Serial.print(" Red: ");
+  Serial.print(r);
+  Serial.print(" Blue: ");
+  Serial.println(b);
 }
