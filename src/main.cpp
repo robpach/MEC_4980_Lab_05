@@ -124,6 +124,7 @@ void loop()
       curState = ColorSensing;
       ToggleConveyor(true);
       colorValue = 10000;
+      ToggleCompressor(true);
     }
 
     break;
@@ -142,7 +143,7 @@ void loop()
         distToEject = 3;
         targetColor = 'w';
       }
-      else if (colorValue < 4600)
+      else if (colorValue < 5000)
       {
         distToEject = 9;
         targetColor = 'r';
@@ -152,7 +153,6 @@ void loop()
         distToEject = 14;
         targetColor = 'b';
       }
-      ToggleCompressor(true);
     }
     break;
   case CountedMove:
